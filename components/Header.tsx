@@ -4,16 +4,36 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet, 
+  StyleSheet,
   Modal,
   Pressable,
   ScrollView,
+  ViewStyle,
+  TextStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; //hey
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import Colors from '../constants/Colors';
+
+// Colors defined inline to avoid import issues
+const Colors = {
+  white: '#FFFFFF',
+  blue: {
+    100: '#DBEAFE',
+    500: '#3B82F6',
+    600: '#2563EB',
+    700: '#1D4ED8',
+  },
+  slate: {
+    50: '#F8FAFC',
+    100: '#F1F5F9',
+    400: '#94A3B8',
+    500: '#64748B',
+    600: '#475569',
+    700: '#334155',
+    900: '#0F172A',
+  },
+};
 
 type UserRole = 'patient' | 'therapist' | null;
 
@@ -24,7 +44,6 @@ interface User {
 }
 
 interface HeaderProps {
-  // Pass these from your AuthContext or state management
   user?: User | null;
   isAuthenticated?: boolean;
   onLogout?: () => void;
@@ -41,21 +60,19 @@ const Header: React.FC<HeaderProps> = ({
 
   const userRole: UserRole = user?.role ?? null;
 
-  // Determine home/dashboard link based on role
   const getHomeHref = (): string => {
     if (!isAuthenticated) return '/';
-    if (userRole === 'patient') return '/patient/dashboard';
-    if (userRole === 'therapist') return '/therapist/dashboard';
+    if (userRole === 'patient') return '/(patient)/dashboard';
+    if (userRole === 'therapist') return '/(therapist)/dashboard';
     return '/';
   };
 
   const getProfileHref = (): string => {
-    if (userRole === 'therapist') return '/therapist/profile';
-    if (userRole === 'patient') return '/patient/profile';
+    if (userRole === 'therapist') return '/(therapist)/profile';
+    if (userRole === 'patient') return '/(patient)/profile';
     return '/(auth)/login';
   };
 
-  // Navigation links based on role
   const getNavLinks = () => {
     const base = [
       { label: 'Home', href: getHomeHref(), icon: 'home-outline' as const },
@@ -75,7 +92,7 @@ const Header: React.FC<HeaderProps> = ({
       if (userRole === 'therapist') {
         return [
           ...base,
-          { label: 'Appointments', href: '/appointments', icon: 'calendar-outline' as const },
+          { label: 'Appointments', href: '/(therapist)/appointments', icon: 'calendar-outline' as const },
           { label: 'Support', href: '/support', icon: 'chatbubbles-outline' as const },
         ];
       }
@@ -89,14 +106,14 @@ const Header: React.FC<HeaderProps> = ({
   const handleNavigation = (href: string) => {
     setMenuOpen(false);
     setProfileDropdownOpen(false);
-    router.push(href as any);
+    router.push(href as never);
   };
 
   const handleLogout = () => {
     setMenuOpen(false);
     setProfileDropdownOpen(false);
     onLogout?.();
-    router.replace('/');
+    router.replace('/' as never);
   };
 
   return (
@@ -121,7 +138,7 @@ const Header: React.FC<HeaderProps> = ({
               {userRole === 'patient' && (
                 <TouchableOpacity
                   style={styles.assessmentButton}
-                  onPress={() => handleNavigation('/patient/assessment')}
+                  onPress={() => handleNavigation('/(patient)/assessment')}
                 >
                   <LinearGradient
                     colors={[Colors.blue[600], '#4f46e5']}
@@ -138,7 +155,7 @@ const Header: React.FC<HeaderProps> = ({
               {userRole === 'therapist' && (
                 <TouchableOpacity
                   style={styles.assessmentButton}
-                  onPress={() => handleNavigation('/my-patients')}
+                  onPress={() => handleNavigation('/(therapist)/my-patients')}
                 >
                   <LinearGradient
                     colors={[Colors.blue[600], '#4f46e5']}
@@ -170,6 +187,7 @@ const Header: React.FC<HeaderProps> = ({
                   name="chevron-down"
                   size={16}
                   color={Colors.slate[400]}
+                  style={styles.chevronIcon}
                 />
               </TouchableOpacity>
             </>
@@ -217,7 +235,7 @@ const Header: React.FC<HeaderProps> = ({
             {userRole === 'patient' && (
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/patient/dashboard')}
+                onPress={() => handleNavigation('/(patient)/dashboard')}
               >
                 <Ionicons name="grid-outline" size={18} color={Colors.slate[600]} />
                 <Text style={styles.dropdownItemText}>Dashboard</Text>
@@ -227,7 +245,7 @@ const Header: React.FC<HeaderProps> = ({
             {userRole === 'therapist' && (
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/therapist/dashboard')}
+                onPress={() => handleNavigation('/(therapist)/dashboard')}
               >
                 <Ionicons name="grid-outline" size={18} color={Colors.slate[600]} />
                 <Text style={styles.dropdownItemText}>Dashboard</Text>
@@ -343,7 +361,7 @@ const Header: React.FC<HeaderProps> = ({
                     {userRole === 'patient' && (
                       <TouchableOpacity
                         style={styles.menuCtaButton}
-                        onPress={() => handleNavigation('/patient/assessment')}
+                        onPress={() => handleNavigation('/(patient)/assessment')}
                       >
                         <LinearGradient
                           colors={[Colors.blue[600], '#4f46e5']}
@@ -358,7 +376,7 @@ const Header: React.FC<HeaderProps> = ({
                     {userRole === 'therapist' && (
                       <TouchableOpacity
                         style={styles.menuCtaButton}
-                        onPress={() => handleNavigation('/my-patients')}
+                        onPress={() => handleNavigation('/(therapist)/my-patients')}
                       >
                         <LinearGradient
                           colors={[Colors.blue[600], '#4f46e5']}
@@ -408,7 +426,7 @@ const Header: React.FC<HeaderProps> = ({
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: Colors.white,
+    backgroundColor: '#FFFFFF',
   },
   container: {
     flexDirection: 'row',
@@ -416,9 +434,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: Colors.white,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: Colors.slate[100],
+    borderBottomColor: '#F1F5F9',
   },
   logoContainer: {
     flexDirection: 'row',
@@ -428,11 +446,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: Colors.blue[600],
+    backgroundColor: '#2563EB',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
-    shadowColor: Colors.blue[600],
+    shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -441,17 +459,17 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 20,
     fontWeight: '600',
-    color: Colors.slate[900],
+    color: '#0F172A',
   },
   rightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   assessmentButton: {
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: Colors.blue[600],
+    marginRight: 8,
+    shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -462,16 +480,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 10,
-    gap: 6,
   },
   assessmentButtonText: {
-    color: Colors.white,
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
+    marginLeft: 6,
   },
   notificationButton: {
     padding: 8,
     position: 'relative',
+    marginRight: 8,
   },
   notificationBadge: {
     position: 'absolute',
@@ -482,29 +501,30 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#EF4444',
     borderWidth: 2,
-    borderColor: Colors.white,
+    borderColor: '#FFFFFF',
   },
   profileButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    marginRight: 8,
   },
   profileAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.blue[100],
+    backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
   },
+  chevronIcon: {
+    marginLeft: 4,
+  },
   menuButton: {
     padding: 8,
     marginLeft: 4,
   },
-
-  // Profile Dropdown
   dropdownOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
@@ -514,10 +534,10 @@ const styles = StyleSheet.create({
     paddingRight: 16,
   },
   profileDropdown: {
-    backgroundColor: Colors.white,
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     width: 220,
-    shadowColor: '#000',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 24,
@@ -528,48 +548,46 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.slate[100],
+    borderBottomColor: '#F1F5F9',
   },
   dropdownLabel: {
     fontSize: 11,
-    color: Colors.slate[400],
+    color: '#94A3B8',
     fontWeight: '500',
     marginBottom: 2,
   },
   dropdownUserName: {
     fontSize: 14,
     fontWeight: '700',
-    color: Colors.slate[900],
+    color: '#0F172A',
   },
   dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    gap: 12,
   },
   dropdownItemText: {
     fontSize: 14,
-    color: Colors.slate[700],
+    color: '#334155',
     fontWeight: '500',
+    marginLeft: 12,
   },
   dropdownDivider: {
     height: 1,
-    backgroundColor: Colors.slate[100],
+    backgroundColor: '#F1F5F9',
     marginVertical: 4,
   },
   logoutText: {
     color: '#DC2626',
   },
-
-  // Mobile Menu Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   menuContainer: {
-    backgroundColor: Colors.white,
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingBottom: 40,
@@ -582,7 +600,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.slate[100],
+    borderBottomColor: '#F1F5F9',
   },
   menuLogoContainer: {
     flexDirection: 'row',
@@ -592,7 +610,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: Colors.blue[600],
+    backgroundColor: '#2563EB',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
@@ -600,23 +618,23 @@ const styles = StyleSheet.create({
   menuLogoText: {
     fontSize: 18,
     fontWeight: '600',
-    color: Colors.slate[900],
+    color: '#0F172A',
   },
   menuUserInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingVertical: 20,
-    backgroundColor: Colors.slate[50],
-    gap: 14,
+    backgroundColor: '#F8FAFC',
   },
   menuUserAvatar: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: Colors.blue[100],
+    backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 14,
   },
   menuUserDetails: {
     flex: 1,
@@ -624,17 +642,17 @@ const styles = StyleSheet.create({
   menuUserName: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.slate[900],
+    color: '#0F172A',
     marginBottom: 2,
   },
   menuUserEmail: {
     fontSize: 13,
-    color: Colors.slate[500],
+    color: '#64748B',
     marginBottom: 6,
   },
   menuUserBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: Colors.blue[100],
+    backgroundColor: '#DBEAFE',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -642,7 +660,7 @@ const styles = StyleSheet.create({
   menuUserBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: Colors.blue[700],
+    color: '#1D4ED8',
     textTransform: 'capitalize',
   },
   menuLinks: {
@@ -661,31 +679,32 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '500',
-    color: Colors.slate[700],
+    color: '#334155',
     marginLeft: 14,
   },
   menuActions: {
     paddingHorizontal: 24,
     paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: Colors.slate[100],
+    borderTopColor: '#F1F5F9',
     marginTop: 8,
-    gap: 12,
   },
   menuLoginButton: {
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: Colors.slate[100],
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
+    marginBottom: 12,
   },
   menuLoginButtonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: Colors.slate[700],
+    color: '#334155',
   },
   menuSignupButton: {
     borderRadius: 14,
     overflow: 'hidden',
+    marginBottom: 12,
   },
   menuSignupGradient: {
     paddingVertical: 14,
@@ -694,42 +713,44 @@ const styles = StyleSheet.create({
   menuSignupButtonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: Colors.white,
+    color: '#FFFFFF',
   },
   menuCtaButton: {
     borderRadius: 14,
     overflow: 'hidden',
-    shadowColor: Colors.blue[600],
+    shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+    marginBottom: 12,
   },
   menuCtaGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    gap: 10,
   },
   menuCtaText: {
     fontSize: 15,
     fontWeight: '700',
-    color: Colors.white,
+    color: '#FFFFFF',
+    marginLeft: 10,
   },
   menuSecondaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: Colors.slate[50],
+    backgroundColor: '#F8FAFC',
     borderRadius: 14,
-    gap: 12,
+    marginBottom: 12,
   },
   menuSecondaryText: {
     fontSize: 15,
     fontWeight: '600',
-    color: Colors.slate[700],
+    color: '#334155',
+    marginLeft: 12,
   },
   menuLogoutButton: {
     flexDirection: 'row',
@@ -740,13 +761,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FEE2E2',
     backgroundColor: '#FEF2F2',
-    gap: 10,
     marginTop: 8,
   },
   menuLogoutText: {
     fontSize: 15,
     fontWeight: '700',
     color: '#DC2626',
+    marginLeft: 10,
   },
 });
 
