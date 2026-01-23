@@ -1,17 +1,21 @@
 // components/landingpage/WhoIsItFor.tsx
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Dimensions,
-  Animated,
   Image,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../constants/Colors';
 
-const { width } = Dimensions.get('window');
+const { width, height: screenHeight } = Dimensions.get('window');
 
 interface AudienceItem {
   category: string;
@@ -26,8 +30,7 @@ const targetAudience: AudienceItem[] = [
     category: 'Individuals',
     title: 'Seeking Support',
     description:
-      'People navigating life\'s challenges who need a safe space to talk and professional guidance to find their peace.',
-    // Replace with your actual image: require('../../assets/images/doc1.jpeg'),
+      "People navigating life's challenges who need a safe space to talk and professional guidance to find their peace.",
     imageUrl: null,
     badge: 'Patient',
   },
@@ -36,7 +39,6 @@ const targetAudience: AudienceItem[] = [
     title: 'Health Professionals',
     description:
       'Licensed therapists looking to expand their practice, manage appointments, and connect with patients seamlessly.',
-    // Replace with your actual image: require('../../assets/images/doc1.jpeg'),
     imageUrl: null,
     badge: 'Therapist',
   },
@@ -45,99 +47,146 @@ const targetAudience: AudienceItem[] = [
     title: 'Busy Professionals',
     description:
       'High-performers dealing with stress, burnout, or work-life balance who require flexible, remote mental health support.',
-    // Replace with your actual image: require('../../assets/images/doc1.jpeg'),
     imageUrl: null,
     badge: 'Workplace',
   },
 ];
 
-const AudienceCard: React.FC<{ item: AudienceItem; index: number }> = ({
-  item,
-  index,
+// Scroll-triggered animation wrapper
+const AnimateOnScroll = ({
+  children,
+  direction = 'up',
+  delay = 0,
+  scrollY,
+}: {
+  children: React.ReactNode;
+  direction?: 'up' | 'left' | 'right';
+  delay?: number;
+  scrollY: number;
 }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(40)).current;
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const [elementY, setElementY] = useState<number | null>(null);
+  const viewRef = useRef<View>(null);
+
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(direction === 'up' ? 40 : 0);
+  const translateX = useSharedValue(
+    direction === 'left' ? 40 : direction === 'right' ? -40 : 0
+  );
+
+  const measurePosition = () => {
+    if (viewRef.current) {
+      viewRef.current.measureInWindow((x, y) => {
+        setElementY(y);
+      });
+    }
+  };
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        delay: index * 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        delay: index * 150,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+    if (elementY !== null && !hasAnimated) {
+      if (elementY < screenHeight * 0.85 && elementY > -100) {
+        setHasAnimated(true);
+        setTimeout(() => {
+          opacity.value = withTiming(1, { duration: 800 });
+          translateY.value = withTiming(0, { duration: 800 });
+          translateX.value = withTiming(0, { duration: 800 });
+        }, delay);
+      }
+    }
+  }, [scrollY, elementY, hasAnimated]);
+
+  useEffect(() => {
+    measurePosition();
+  }, [scrollY]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { translateY: translateY.value },
+      { translateX: translateX.value },
+    ],
+  }));
 
   return (
-    <Animated.View
-      style={[
-        styles.card,
-        {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
-        },
-      ]}
-    >
-      {/* Image Container */}
-      <View style={styles.imageContainer}>
-        {item.imageUrl ? (
-          <Image
-            source={item.imageUrl}
-            style={styles.cardImage}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={[styles.cardImage, styles.imagePlaceholder]}>
-            <Ionicons 
-              name={item.badge === 'Patient' ? 'person' : item.badge === 'Therapist' ? 'medical' : 'briefcase'} 
-              size={60} 
-              color={`${Colors.blue[400]}80`} 
-            />
-          </View>
-        )}
-        {/* Overlay Gradient */}
-        <View style={styles.imageOverlay} />
-      </View>
-
-      {/* Content */}
-      <View style={styles.cardContent}>
-        <Text style={styles.badge}>{item.badge}</Text>
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <Text style={styles.cardDescription}>{item.description}</Text>
-
-        {/* Decorative Line */}
-        <View style={styles.decorativeLine} />
-      </View>
+    <Animated.View ref={viewRef} style={animatedStyle} onLayout={measurePosition}>
+      {children}
     </Animated.View>
   );
 };
 
-const WhoIsItFor: React.FC = () => {
+const AudienceCard = ({
+  item,
+  index,
+  scrollY,
+}: {
+  item: AudienceItem;
+  index: number;
+  scrollY: number;
+}) => {
+  return (
+    <AnimateOnScroll direction="up" delay={index * 150} scrollY={scrollY}>
+      <View style={styles.card}>
+        <View style={styles.imageContainer}>
+          {item.imageUrl ? (
+            <Image
+              source={item.imageUrl}
+              style={styles.cardImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.cardImage, styles.imagePlaceholder]}>
+              <Ionicons
+                name={
+                  item.badge === 'Patient'
+                    ? 'person'
+                    : item.badge === 'Therapist'
+                    ? 'medical'
+                    : 'briefcase'
+                }
+                size={60}
+                color={`${Colors.blue[400]}80`}
+              />
+            </View>
+          )}
+          <View style={styles.imageOverlay} />
+        </View>
+
+        <View style={styles.cardContent}>
+          <Text style={styles.badge}>{item.badge}</Text>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <Text style={styles.cardDescription}>{item.description}</Text>
+          <View style={styles.decorativeLine} />
+        </View>
+      </View>
+    </AnimateOnScroll>
+  );
+};
+
+interface WhoIsItForProps {
+  scrollY?: number;
+}
+
+const WhoIsItFor = ({ scrollY = 0 }: WhoIsItForProps) => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerBadge}>
-          <Text style={styles.headerBadgeText}>AUDIENCE</Text>
+      <AnimateOnScroll direction="up" delay={0} scrollY={scrollY}>
+        <View style={styles.header}>
+          <View style={styles.headerBadge}>
+            <Text style={styles.headerBadgeText}>AUDIENCE</Text>
+          </View>
+          <Text style={styles.title}>Who is MentalSathi For?</Text>
+          <Text style={styles.subtitle}>
+            Whether you're looking for guidance or providing it—MentalSathi meets
+            you where you are with professional tools and compassionate care.
+          </Text>
         </View>
-        <Text style={styles.title}>Who is MentalSathi For?</Text>
-        <Text style={styles.subtitle}>
-          Whether you're looking for guidance or providing it—MentalSathi meets
-          you where you are with professional tools and compassionate care.
-        </Text>
-      </View>
+      </AnimateOnScroll>
 
       {/* Audience Cards */}
       <View style={styles.cardsContainer}>
         {targetAudience.map((item, index) => (
-          <AudienceCard key={index} item={item} index={index} />
+          <AudienceCard key={index} item={item} index={index} scrollY={scrollY} />
         ))}
       </View>
     </View>

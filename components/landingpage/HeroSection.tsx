@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
-  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -99,7 +98,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetMatched, onLearnMore }) 
     >
       {/* Animated Decorative Elements */}
       <View style={styles.decorationsContainer}>
-        {/* Heart Shape */}
         <Animated.View
           style={[
             styles.decoration,
@@ -110,7 +108,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetMatched, onLearnMore }) 
           <Ionicons name="heart" size={40} color={`${Colors.blue[300]}66`} />
         </Animated.View>
 
-        {/* Brain/Head Icon */}
         <Animated.View
           style={[
             styles.decoration,
@@ -121,7 +118,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetMatched, onLearnMore }) 
           <Ionicons name="fitness" size={50} color={`${Colors.blue[400]}4D`} />
         </Animated.View>
 
-        {/* Plus Icon */}
         <Animated.View
           style={[
             styles.decoration,
@@ -132,7 +128,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetMatched, onLearnMore }) 
           <Ionicons name="add-circle" size={35} color={`${Colors.blue[300]}59`} />
         </Animated.View>
 
-        {/* Pulsing Circle */}
         <Animated.View
           style={[
             styles.pulsingCircle,
@@ -140,7 +135,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetMatched, onLearnMore }) 
           ]}
         />
 
-        {/* Small Heart */}
         <Animated.View
           style={[
             styles.decoration,
@@ -162,19 +156,16 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetMatched, onLearnMore }) 
           },
         ]}
       >
-        {/* Tag */}
         <View style={styles.tagContainer}>
           <Text style={styles.tagText}>OUR PURPOSE</Text>
         </View>
 
-        {/* Main Heading */}
         <Text style={styles.heading}>
           Join CarePair &{'\n'}
           Shape The{'\n'}
           Future of Health
         </Text>
 
-        {/* CTA Buttons */}
         <View style={styles.buttonsContainer}>
           <TouchableOpacity
             style={styles.primaryButton}
@@ -193,7 +184,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetMatched, onLearnMore }) 
           </TouchableOpacity>
         </View>
 
-        {/* Scroll Indicator */}
         <TouchableOpacity style={styles.scrollIndicator}>
           <Text style={styles.scrollText}>Scroll Down</Text>
           <Ionicons name="chevron-down" size={20} color={Colors.slate[600]} />

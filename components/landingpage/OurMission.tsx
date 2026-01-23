@@ -1,35 +1,27 @@
 // components/landingpage/OurMission.tsx
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Dimensions,
-  Animated,
-  Image,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../constants/Colors';
 
-const { width } = Dimensions.get('window');
+const { width, height: screenHeight } = Dimensions.get('window');
 
-interface FeatureItem {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
-  points: string[];
-  color: 'blue' | 'purple' | 'teal';
-  image: any;
-}
-
-const features: FeatureItem[] = [
+const features = [
   {
-    icon: 'pulse',
+    icon: 'pulse' as const,
     title: 'Smart Health Metrics',
     description:
       'Wake up to actionable health summaries, personalized based on your sleep, mood, movement, and input.',
-    // Replace with your actual image: require('../../assets/images/match.png'),
-    image: null,
     points: [
       'Personalized specs every morning',
       'Trend detection across time',
@@ -38,12 +30,10 @@ const features: FeatureItem[] = [
     color: 'blue',
   },
   {
-    icon: 'trending-up',
+    icon: 'trending-up' as const,
     title: 'Habit-Based Recommendation',
     description:
       'No clunky setup—connect your favorite devices or just type how you feel. AddAction adapts either way.',
-    // Replace with your actual image: require('../../assets/images/companion.png'),
-    image: null,
     points: [
       'Syncs with Apple Health & Fitbit',
       'Tracks mood, energy, and stress',
@@ -52,12 +42,10 @@ const features: FeatureItem[] = [
     color: 'purple',
   },
   {
-    icon: 'medkit',
+    icon: 'medkit' as const,
     title: 'AI Symptom Checker',
     description:
       'From breathing guides to burnout prevention, AddAction helps you build mental resilience.',
-    // Replace with your actual image: require('../../assets/images/insights.png'),
-    image: null,
     points: [
       'On-demand mindfulness tools',
       'Guided stress check-ins',
@@ -67,138 +55,154 @@ const features: FeatureItem[] = [
   },
 ];
 
-const getColorClasses = (color: string) => {
-  const colors: Record<string, { gradient: string[]; text: string }> = {
-    blue: {
-      gradient: [Colors.blue[500], Colors.blue[600]],
-      text: Colors.blue[600],
-    },
-    purple: {
-      gradient: [Colors.purple[500], Colors.purple[600]],
-      text: Colors.purple[600],
-    },
-    teal: {
-      gradient: [Colors.teal[500], Colors.teal[600]],
-      text: Colors.teal[600],
-    },
+const getColor = (color: string) => {
+  const colors: Record<string, string> = {
+    blue: Colors.blue[600],
+    purple: Colors.purple[600],
+    teal: Colors.teal[600],
   };
   return colors[color];
 };
 
-const FeatureCard: React.FC<{ feature: FeatureItem; index: number }> = ({
-  feature,
-  index,
+// Animation wrapper that triggers when scrolled into view
+const AnimateOnScroll = ({
+  children,
+  direction = 'up',
+  delay = 0,
+  scrollY,
+}: {
+  children: React.ReactNode;
+  direction?: 'up' | 'left' | 'right';
+  delay?: number;
+  scrollY: number;
 }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const colors = getColorClasses(feature.color);
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const [elementY, setElementY] = useState<number | null>(null);
+  const viewRef = useRef<View>(null);
 
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(direction === 'up' ? 40 : 0);
+  const translateX = useSharedValue(
+    direction === 'left' ? 40 : direction === 'right' ? -40 : 0
+  );
+
+  // Measure element position
+  const measurePosition = () => {
+    if (viewRef.current) {
+      viewRef.current.measureInWindow((x, y) => {
+        setElementY(y);
+      });
+    }
+  };
+
+  // Check visibility on scroll
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        delay: index * 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        delay: index * 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+    if (elementY !== null && !hasAnimated) {
+      // Element is visible when it's in the lower 85% of screen
+      if (elementY < screenHeight * 0.85 && elementY > -100) {
+        setHasAnimated(true);
+        setTimeout(() => {
+          opacity.value = withTiming(1, { duration: 800 });
+          translateY.value = withTiming(0, { duration: 800 });
+          translateX.value = withTiming(0, { duration: 800 });
+        }, delay);
+      }
+    }
+  }, [scrollY, elementY, hasAnimated]);
+
+  // Re-measure on scroll
+  useEffect(() => {
+    measurePosition();
+  }, [scrollY]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { translateY: translateY.value },
+      { translateX: translateX.value },
+    ],
+  }));
 
   return (
-    <Animated.View
-      style={[
-        styles.featureContainer,
-        {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
-        },
-      ]}
-    >
-      {/* Image */}
-      <View style={styles.imageContainer}>
-        <View
-          style={[
-            styles.imageGlow,
-            { backgroundColor: `${colors.text}15` },
-          ]}
-        />
-        {feature.image ? (
-          <Image
-            source={feature.image}
-            style={styles.featureImage}
-            resizeMode="contain"
-          />
-        ) : (
-          <View style={[styles.featureImage, styles.imagePlaceholder, { backgroundColor: `${colors.text}20` }]}>
-            <Ionicons name={feature.icon} size={80} color={`${colors.text}60`} />
-          </View>
-        )}
-      </View>
-
-      {/* Content */}
-      <View style={styles.featureContent}>
-        {/* Icon */}
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: colors.text },
-          ]}
-        >
-          <Ionicons name={feature.icon} size={24} color={Colors.white} />
-        </View>
-
-        <Text style={styles.featureTitle}>{feature.title}</Text>
-        <Text style={styles.featureDescription}>{feature.description}</Text>
-
-        {/* Points */}
-        <View style={styles.pointsContainer}>
-          {feature.points.map((point, i) => (
-            <View key={i} style={styles.pointItem}>
-              <View
-                style={[
-                  styles.checkIcon,
-                  { backgroundColor: colors.text },
-                ]}
-              >
-                <Ionicons name="checkmark" size={14} color={Colors.white} />
-              </View>
-              <Text style={styles.pointText}>{point}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
+    <Animated.View ref={viewRef} style={animatedStyle} onLayout={measurePosition}>
+      {children}
     </Animated.View>
   );
 };
 
-const OurMission: React.FC = () => {
+const FeatureCard = ({
+  feature,
+  index,
+  scrollY,
+}: {
+  feature: typeof features[0];
+  index: number;
+  scrollY: number;
+}) => {
+  const color = getColor(feature.color);
+  const isEven = index % 2 === 0;
+
+  return (
+    <View style={styles.featureContainer}>
+      <AnimateOnScroll direction={isEven ? 'right' : 'left'} delay={0} scrollY={scrollY}>
+        <View style={styles.imageContainer}>
+          <View style={[styles.imagePlaceholder, { backgroundColor: `${color}20` }]}>
+            <Ionicons name={feature.icon} size={80} color={`${color}60`} />
+          </View>
+        </View>
+      </AnimateOnScroll>
+
+      <AnimateOnScroll direction={isEven ? 'left' : 'right'} delay={150} scrollY={scrollY}>
+        <View style={styles.featureContent}>
+          <View style={[styles.iconContainer, { backgroundColor: color }]}>
+            <Ionicons name={feature.icon} size={24} color={Colors.white} />
+          </View>
+
+          <Text style={styles.featureTitle}>{feature.title}</Text>
+          <Text style={styles.featureDescription}>{feature.description}</Text>
+
+          <View style={styles.pointsContainer}>
+            {feature.points.map((point, i) => (
+              <View key={i} style={styles.pointItem}>
+                <View style={[styles.checkIcon, { backgroundColor: color }]}>
+                  <Ionicons name="checkmark" size={14} color={Colors.white} />
+                </View>
+                <Text style={styles.pointText}>{point}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </AnimateOnScroll>
+    </View>
+  );
+};
+
+interface OurMissionProps {
+  scrollY?: number;
+}
+
+const OurMission = ({ scrollY = 0 }: OurMissionProps) => {
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>Our Mission</Text>
+      <AnimateOnScroll direction="up" delay={0} scrollY={scrollY}>
+        <View style={styles.header}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>Our Mission</Text>
+          </View>
+          <Text style={styles.title}>
+            AI That Understands You, Not Just Your Data
+          </Text>
+          <Text style={styles.subtitle}>
+            We go beyond step counters and calorie logs. AddAction offers
+            context-aware health coaching, habit support, and real-time insights
+            — like a wellness team in your pocket.
+          </Text>
         </View>
-        <Text style={styles.title}>
-          AI That Understands You, Not Just Your Data
-        </Text>
-        <Text style={styles.subtitle}>
-          We go beyond step counters and calorie logs. AddAction offers
-          context-aware health coaching, habit support, and real-time insights
-          — like a wellness team in your pocket.
-        </Text>
-      </View>
+      </AnimateOnScroll>
 
-      {/* Features */}
       <View style={styles.featuresContainer}>
         {features.map((feature, index) => (
-          <FeatureCard key={index} feature={feature} index={index} />
+          <FeatureCard key={index} feature={feature} index={index} scrollY={scrollY} />
         ))}
       </View>
     </View>
@@ -249,22 +253,12 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   imageContainer: {
-    position: 'relative',
     alignItems: 'center',
   },
-  imageGlow: {
-    position: 'absolute',
-    width: width * 0.8,
-    height: width * 0.6,
-    borderRadius: 24,
-    top: 20,
-  },
-  featureImage: {
+  imagePlaceholder: {
     width: width - 48,
     height: width * 0.65,
     borderRadius: 16,
-  },
-  imagePlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -278,11 +272,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
   },
   featureTitle: {
     fontSize: 24,

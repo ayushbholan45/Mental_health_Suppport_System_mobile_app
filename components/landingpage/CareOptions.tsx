@@ -1,17 +1,21 @@
 // components/landingpage/CareOptions.tsx
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Animated,
   Dimensions,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../constants/Colors';
 
-const { width } = Dimensions.get('window');
+const { width, height: screenHeight } = Dimensions.get('window');
 
 interface CareOption {
   title: string;
@@ -30,7 +34,7 @@ const careOptions: CareOption[] = [
   },
   {
     title: 'Therapy',
-    desc: 'Care proven to help with life\'s challenges.',
+    desc: "Care proven to help with life's challenges.",
     color: Colors.orange[100],
     textColor: Colors.orange[700],
   },
@@ -56,135 +60,153 @@ const benefits = [
   'Free assessment and recommendation',
 ];
 
-const CareOptionCard: React.FC<{ option: CareOption; index: number }> = ({
-  option,
-  index,
+// Scroll-triggered animation wrapper
+const AnimateOnScroll = ({
+  children,
+  direction = 'up',
+  delay = 0,
+  scrollY,
+}: {
+  children: React.ReactNode;
+  direction?: 'up' | 'left' | 'right';
+  delay?: number;
+  scrollY: number;
 }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const [elementY, setElementY] = useState<number | null>(null);
+  const viewRef = useRef<View>(null);
+
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(direction === 'up' ? 40 : 0);
+  const translateX = useSharedValue(
+    direction === 'left' ? 40 : direction === 'right' ? -40 : 0
+  );
+
+  const measurePosition = () => {
+    if (viewRef.current) {
+      viewRef.current.measureInWindow((x, y) => {
+        setElementY(y);
+      });
+    }
+  };
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        delay: index * 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 500,
-        delay: index * 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+    if (elementY !== null && !hasAnimated) {
+      if (elementY < screenHeight * 0.85 && elementY > -100) {
+        setHasAnimated(true);
+        setTimeout(() => {
+          opacity.value = withTiming(1, { duration: 800 });
+          translateY.value = withTiming(0, { duration: 800 });
+          translateX.value = withTiming(0, { duration: 800 });
+        }, delay);
+      }
+    }
+  }, [scrollY, elementY, hasAnimated]);
+
+  useEffect(() => {
+    measurePosition();
+  }, [scrollY]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { translateY: translateY.value },
+      { translateX: translateX.value },
+    ],
+  }));
 
   return (
-    <Animated.View
-      style={[
-        styles.card,
-        {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
-        },
-      ]}
-    >
-      {/* Colored Header */}
-      <View style={[styles.cardHeader, { backgroundColor: option.color }]}>
-        {option.tag && (
-          <View style={styles.tagBadge}>
-            <Text style={styles.tagText}>{option.tag}</Text>
-          </View>
-        )}
-        <View style={[styles.cardIcon, { borderColor: option.textColor }]} />
-        <Text style={[styles.cardTitle, { color: option.textColor }]}>
-          {option.title}
-        </Text>
-      </View>
-
-      {/* Card Body */}
-      <View style={styles.cardBody}>
-        <Text style={styles.cardDesc}>{option.desc}</Text>
-        <TouchableOpacity style={styles.learnMoreBtn}>
-          <Text style={styles.learnMoreText}>Learn more</Text>
-          <Ionicons name="arrow-forward" size={16} color={Colors.blue[600]} />
-        </TouchableOpacity>
-      </View>
+    <Animated.View ref={viewRef} style={animatedStyle} onLayout={measurePosition}>
+      {children}
     </Animated.View>
   );
 };
 
-const CareOptions: React.FC = () => {
-  const ctaFadeAnim = useRef(new Animated.Value(0)).current;
-  const ctaSlideAnim = useRef(new Animated.Value(30)).current;
+const CareOptionCard = ({
+  option,
+  index,
+  scrollY,
+}: {
+  option: CareOption;
+  index: number;
+  scrollY: number;
+}) => {
+  return (
+    <AnimateOnScroll direction="up" delay={index * 100} scrollY={scrollY}>
+      <View style={styles.card}>
+        <View style={[styles.cardHeader, { backgroundColor: option.color }]}>
+          {option.tag && (
+            <View style={styles.tagBadge}>
+              <Text style={styles.tagText}>{option.tag}</Text>
+            </View>
+          )}
+          <View style={[styles.cardIcon, { borderColor: option.textColor }]} />
+          <Text style={[styles.cardTitle, { color: option.textColor }]}>
+            {option.title}
+          </Text>
+        </View>
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(ctaFadeAnim, {
-        toValue: 1,
-        duration: 600,
-        delay: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(ctaSlideAnim, {
-        toValue: 0,
-        duration: 600,
-        delay: 400,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+        <View style={styles.cardBody}>
+          <Text style={styles.cardDesc}>{option.desc}</Text>
+          <TouchableOpacity style={styles.learnMoreBtn}>
+            <Text style={styles.learnMoreText}>Learn more</Text>
+            <Ionicons name="arrow-forward" size={16} color={Colors.blue[600]} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </AnimateOnScroll>
+  );
+};
 
+interface CareOptionsProps {
+  scrollY?: number;
+}
+
+const CareOptions = ({ scrollY = 0 }: CareOptionsProps) => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.sectionLabel}>OUR CARE OPTIONS</Text>
-        <Text style={styles.title}>
-          Affordable help, with or without insurance
-        </Text>
-        <Text style={styles.subtitle}>
-          Get started with a free assessment, and we'll match you with a
-          personalized plan.
-        </Text>
-      </View>
+      <AnimateOnScroll direction="up" delay={0} scrollY={scrollY}>
+        <View style={styles.header}>
+          <Text style={styles.sectionLabel}>OUR CARE OPTIONS</Text>
+          <Text style={styles.title}>
+            Affordable help, with or without insurance
+          </Text>
+          <Text style={styles.subtitle}>
+            Get started with a free assessment, and we'll match you with a
+            personalized plan.
+          </Text>
+        </View>
+      </AnimateOnScroll>
 
       {/* Care Options Grid */}
       <View style={styles.optionsGrid}>
         {careOptions.map((option, index) => (
-          <CareOptionCard key={index} option={option} index={index} />
+          <CareOptionCard key={index} option={option} index={index} scrollY={scrollY} />
         ))}
       </View>
 
       {/* CTA Section */}
-      <Animated.View
-        style={[
-          styles.ctaSection,
-          {
-            opacity: ctaFadeAnim,
-            transform: [{ translateY: ctaSlideAnim }],
-          },
-        ]}
-      >
-        <TouchableOpacity style={styles.ctaButton} activeOpacity={0.8}>
-          <Text style={styles.ctaButtonText}>START WITH A FREE ASSESSMENT</Text>
-        </TouchableOpacity>
+      <AnimateOnScroll direction="up" delay={100} scrollY={scrollY}>
+        <View style={styles.ctaSection}>
+          <TouchableOpacity style={styles.ctaButton} activeOpacity={0.8}>
+            <Text style={styles.ctaButtonText}>START WITH A FREE ASSESSMENT</Text>
+          </TouchableOpacity>
 
-        {/* Benefits */}
-        <View style={styles.benefitsContainer}>
-          {benefits.map((benefit, index) => (
-            <View key={index} style={styles.benefitItem}>
-              <Ionicons
-                name="checkmark-circle"
-                size={20}
-                color={Colors.teal[500]}
-              />
-              <Text style={styles.benefitText}>{benefit}</Text>
-            </View>
-          ))}
+          <View style={styles.benefitsContainer}>
+            {benefits.map((benefit, index) => (
+              <View key={index} style={styles.benefitItem}>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color={Colors.teal[500]}
+                />
+                <Text style={styles.benefitText}>{benefit}</Text>
+              </View>
+            ))}
+          </View>
         </View>
-      </Animated.View>
+      </AnimateOnScroll>
     </View>
   );
 };

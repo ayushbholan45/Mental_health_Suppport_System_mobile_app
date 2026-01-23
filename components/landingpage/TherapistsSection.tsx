@@ -8,12 +8,16 @@ import {
   Dimensions,
   ScrollView,
   Image,
-  Animated,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../constants/Colors';
 
-const { width } = Dimensions.get('window');
+const { width, height: screenHeight } = Dimensions.get('window');
 const CARD_WIDTH = 300;
 const CARD_GAP = 16;
 
@@ -31,7 +35,6 @@ const therapists: Therapist[] = [
     name: 'Dr. Alisha Verma',
     title: 'Clinical Psychologist',
     specialties: ['Anxiety & Depression', 'Trauma', 'CBT'],
-    // Replace with: require('../../assets/images/doctor1.jpg'),
     image: null,
   },
   {
@@ -39,7 +42,6 @@ const therapists: Therapist[] = [
     name: 'Mr. Rahul Sharma',
     title: 'Licensed MFT',
     specialties: ['Relationship Issues', 'Family Dynamics', 'Couples Therapy'],
-    // Replace with: require('../../assets/images/doctor2.webp'),
     image: null,
   },
   {
@@ -47,7 +49,6 @@ const therapists: Therapist[] = [
     name: 'Dr. Priya Desai',
     title: 'Psychiatrist',
     specialties: ['Medication Management', 'Mood Disorders', 'ADHD'],
-    // Replace with: require('../../assets/images/doctor3.webp'),
     image: null,
   },
   {
@@ -55,7 +56,6 @@ const therapists: Therapist[] = [
     name: 'Dr. Marcus Cole',
     title: 'Behavioral Therapist',
     specialties: ['Addiction Recovery', 'Habit Breaking', 'Mindfulness'],
-    // Replace with: require('../../assets/images/doctor7.jpg'),
     image: null,
   },
   {
@@ -63,7 +63,6 @@ const therapists: Therapist[] = [
     name: 'Ms. Sarah Jenkins',
     title: 'Child Psychologist',
     specialties: ['Adolescent Issues', 'Learning Disabilities', 'Play Therapy'],
-    // Replace with: require('../../assets/images/doctor4.jpeg'),
     image: null,
   },
   {
@@ -71,7 +70,6 @@ const therapists: Therapist[] = [
     name: 'Dr. Omar Hassan',
     title: 'Trauma Specialist',
     specialties: ['PTSD', 'EMDR', 'Grief Counseling'],
-    // Replace with: require('../../assets/images/doctor7.avif'),
     image: null,
   },
 ];
@@ -85,41 +83,71 @@ const getTagStyle = (index: number) => {
   return styles[index % styles.length];
 };
 
-const TherapistCard: React.FC<{
-  therapist: Therapist;
-  index: number;
-}> = ({ therapist, index }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+// Scroll-triggered animation wrapper
+const AnimateOnScroll = ({
+  children,
+  direction = 'up',
+  delay = 0,
+  scrollY,
+}: {
+  children: React.ReactNode;
+  direction?: 'up' | 'left' | 'right';
+  delay?: number;
+  scrollY: number;
+}) => {
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const [elementY, setElementY] = useState<number | null>(null);
+  const viewRef = useRef<View>(null);
+
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(direction === 'up' ? 40 : 0);
+  const translateX = useSharedValue(
+    direction === 'left' ? 40 : direction === 'right' ? -40 : 0
+  );
+
+  const measurePosition = () => {
+    if (viewRef.current) {
+      viewRef.current.measureInWindow((x, y) => {
+        setElementY(y);
+      });
+    }
+  };
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        delay: (index % 3) * 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        delay: (index % 3) * 150,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+    if (elementY !== null && !hasAnimated) {
+      if (elementY < screenHeight * 0.85 && elementY > -100) {
+        setHasAnimated(true);
+        setTimeout(() => {
+          opacity.value = withTiming(1, { duration: 800 });
+          translateY.value = withTiming(0, { duration: 800 });
+          translateX.value = withTiming(0, { duration: 800 });
+        }, delay);
+      }
+    }
+  }, [scrollY, elementY, hasAnimated]);
+
+  useEffect(() => {
+    measurePosition();
+  }, [scrollY]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { translateY: translateY.value },
+      { translateX: translateX.value },
+    ],
+  }));
 
   return (
-    <Animated.View
-      style={[
-        styles.card,
-        {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
-        },
-      ]}
-    >
-      {/* Image */}
+    <Animated.View ref={viewRef} style={animatedStyle} onLayout={measurePosition}>
+      {children}
+    </Animated.View>
+  );
+};
+
+const TherapistCard = ({ therapist }: { therapist: Therapist }) => {
+  return (
+    <View style={styles.card}>
       <View style={styles.imageContainer}>
         {therapist.image ? (
           <Image
@@ -134,12 +162,10 @@ const TherapistCard: React.FC<{
         )}
       </View>
 
-      {/* Content */}
       <View style={styles.cardContent}>
         <Text style={styles.therapistName}>{therapist.name}</Text>
         <Text style={styles.therapistTitle}>{therapist.title}</Text>
 
-        {/* Specialties */}
         <View style={styles.specialtiesSection}>
           <Text style={styles.specialtiesLabel}>SPECIALTIES</Text>
           <View style={styles.tagsContainer}>
@@ -165,15 +191,10 @@ const TherapistCard: React.FC<{
           </View>
         </View>
 
-        {/* Actions */}
         <View style={styles.actionsContainer}>
           <TouchableOpacity style={styles.viewProfileBtn}>
             <Text style={styles.viewProfileText}>View Profile</Text>
-            <Ionicons
-              name="arrow-forward"
-              size={16}
-              color={Colors.blue[500]}
-            />
+            <Ionicons name="arrow-forward" size={16} color={Colors.blue[500]} />
           </TouchableOpacity>
 
           <View style={styles.socialIcons}>
@@ -186,15 +207,18 @@ const TherapistCard: React.FC<{
           </View>
         </View>
       </View>
-    </Animated.View>
+    </View>
   );
 };
 
-const TherapistsSection: React.FC = () => {
+interface TherapistsSectionProps {
+  scrollY?: number;
+}
+
+const TherapistsSection = ({ scrollY = 0 }: TherapistsSectionProps) => {
   const scrollViewRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Auto-scroll effect
   useEffect(() => {
     const interval = setInterval(() => {
       const nextIndex = (currentIndex + 1) % therapists.length;
@@ -217,28 +241,32 @@ const TherapistsSection: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Meet Our Compassionate Therapists</Text>
-        <Text style={styles.subtitle}>
-          Highly skilled professionals dedicated to providing personalized care.
-          Slide to find the right match for your journey.
-        </Text>
-      </View>
+      <AnimateOnScroll direction="up" delay={0} scrollY={scrollY}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Meet Our Compassionate Therapists</Text>
+          <Text style={styles.subtitle}>
+            Highly skilled professionals dedicated to providing personalized care.
+            Slide to find the right match for your journey.
+          </Text>
+        </View>
+      </AnimateOnScroll>
 
       {/* Horizontal Scroll */}
-      <ScrollView
-        ref={scrollViewRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={CARD_WIDTH + CARD_GAP}
-        decelerationRate="fast"
-        contentContainerStyle={styles.scrollContent}
-        onMomentumScrollEnd={handleScroll}
-      >
-        {therapists.map((therapist, index) => (
-          <TherapistCard key={therapist.id} therapist={therapist} index={index} />
-        ))}
-      </ScrollView>
+      <AnimateOnScroll direction="up" delay={100} scrollY={scrollY}>
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={CARD_WIDTH + CARD_GAP}
+          decelerationRate="fast"
+          contentContainerStyle={styles.scrollContent}
+          onMomentumScrollEnd={handleScroll}
+        >
+          {therapists.map((therapist) => (
+            <TherapistCard key={therapist.id} therapist={therapist} />
+          ))}
+        </ScrollView>
+      </AnimateOnScroll>
 
       {/* Scroll Indicators */}
       <View style={styles.indicators}>
@@ -261,10 +289,12 @@ const TherapistsSection: React.FC = () => {
       </View>
 
       {/* View All Button */}
-      <TouchableOpacity style={styles.viewAllButton} activeOpacity={0.8}>
-        <Text style={styles.viewAllText}>View All Therapists</Text>
-        <Ionicons name="arrow-forward" size={20} color={Colors.white} />
-      </TouchableOpacity>
+      <AnimateOnScroll direction="up" delay={150} scrollY={scrollY}>
+        <TouchableOpacity style={styles.viewAllButton} activeOpacity={0.8}>
+          <Text style={styles.viewAllText}>View All Therapists</Text>
+          <Ionicons name="arrow-forward" size={20} color={Colors.white} />
+        </TouchableOpacity>
+      </AnimateOnScroll>
     </View>
   );
 };

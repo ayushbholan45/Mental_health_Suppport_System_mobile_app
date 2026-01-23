@@ -1,7 +1,8 @@
 // app/index.tsx
-import React from 'react';
-import { ScrollView, StyleSheet, StatusBar } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, StatusBar, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated from 'react-native-reanimated';
 import Header from '../components/Header';
 import {
   HeroSection,
@@ -16,6 +17,11 @@ import { useRouter } from 'expo-router';
 
 export default function LandingPage() {
   const router = useRouter();
+  const [scrollY, setScrollY] = useState(0);
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setScrollY(event.nativeEvent.contentOffset.y);
+  };
 
   const handleGetMatched = () => {
     router.push('/(auth)/signup');
@@ -29,21 +35,23 @@ export default function LandingPage() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
       <Header />
-      <ScrollView
+      <Animated.ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         bounces={true}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         <HeroSection
           onGetMatched={handleGetMatched}
           onLearnMore={handleLearnMore}
         />
-        <OurMission />
-        <CareOptions />
-        <WhoIsItFor />
-        <TherapistsSection />
-        <WhyUs />
-      </ScrollView>
+        <OurMission scrollY={scrollY} />
+        <CareOptions scrollY={scrollY} />
+        <WhoIsItFor scrollY={scrollY} />
+        <TherapistsSection scrollY={scrollY} />
+        <WhyUs scrollY={scrollY} />
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }
